@@ -16,8 +16,9 @@ void sendpressure(){
   Serial.write(_eol);
 }
 void sendcaliper(){
-  Serial.print(String(_height)+String(curr_caliper_value));
+  Serial.print(_height+""+(curr_caliper_value));
   Serial.write(_eol);
+  Serial.println(curr_caliper_value);
 }
 void sendduty(){
   Serial.write(_duty);
@@ -30,8 +31,8 @@ void sendduty(){
 void setup_caliper() 
 {
   
-  pinMode( CLOCK_PIN, INPUT );
-  pinMode( DATA_PIN, INPUT );
+  pinMode( CLOCK_PIN, INPUT_PULLUP);
+  pinMode( DATA_PIN, INPUT_PULLUP );
   
 }
 
@@ -39,28 +40,27 @@ void setup_caliper()
 uint8_t bitcount = 0;
 int lastClock = 0;
 uint8_t  clock =0;
-unsigned long time = 0;
-unsigned long timeStart = 0;
+long time = 0;
+long timeStart = 0;
 
 uint8_t out = 0;
 
 
 void other_loop(){
 
-  lastClock = clock;
+ lastClock=clock; 
  clock = digitalRead(CLOCK_PIN);
-  if(clock==1){
-    
-  }else
+  
 
-  if (lastClock == 1 ){
+  if (lastClock == 1 && clock==0){
     lastClock = clock;
     out = digitalRead(DATA_PIN)+digitalRead(DATA_PIN)+digitalRead(DATA_PIN); // Tripple sampling to remove glitches
-    if((micros() - time) > 800){
+    if((micros() - time) > 600){
       
-
+      sendcaliper();
       curr_caliper_value = 0; 
       bitcount =0;
+      return;
       
     }
     else if((micros() - time) > 400){
@@ -71,14 +71,14 @@ void other_loop(){
     
       
       
-    if(bitcount>0&&bitcount<21){
-        if (out > 1){
-      curr_caliper_value|=(1<<bitcount-1);
-        }
-    }else if(bitcount == 21){
+    if(bitcount<20){
       if (out > 1){
-      curr_caliper_value=-1*curr_caliper_value;
-        }
+        curr_caliper_value|=(1<<bitcount);
+      }
+    }else if(bitcount == 20){
+      if (out > 1){
+        curr_caliper_value=-1*curr_caliper_value;
+      }
       
       sendcaliper();
       
@@ -95,7 +95,7 @@ void other_loop(){
     
   }
   
-  lastClock = clock;
+  
 }
 
 

@@ -25,7 +25,7 @@ void rehandshake(){
 void setup() {
   // put your setup code here, to run once:
   
-  Serial.begin(115200);
+  Serial.begin(9600);
   while(!Serial){}
   setup_caliper();
   init_gpio();
