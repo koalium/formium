@@ -444,7 +444,7 @@ public class Form extends javax.swing.JFrame {
 				cmdRun();
 				
 				monitoring();	
-				
+				checkformingtillend();
 
 			}
 		};
@@ -1053,7 +1053,16 @@ public class Form extends javax.swing.JFrame {
 	}
 	//
 	//
+	private void checkformingtillend(){
+		if(rheight>=fheight-sheight){
+			finished();
+		}
+	}
 	
+	private void finished(){
+		serialSend(null,_pause);
+		setmode(CHANGE_MODE_IDLE);
+	}
 	int bc = 0;
 	Control ctrl = null;
 	Monitor mon = null;
