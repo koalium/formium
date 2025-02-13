@@ -18,7 +18,7 @@ void sendpressure(){
 void sendcaliper(){
   Serial.print(_height+""+(curr_caliper_value));
   Serial.write(_eol);
-  Serial.println(curr_caliper_value);
+  Serial.println(" "+curr_caliper_value);
 }
 void sendduty(){
   Serial.write(_duty);
@@ -49,18 +49,24 @@ uint8_t out = 0;
 void other_loop(){
 
  lastClock=clock; 
- clock = digitalRead(CLOCK_PIN);
+ char cl = digitalRead(CLOCK_PIN);
+ if(cl==0){
+  clock=1;
+ }else{
+  clock=0;
+ }
   
 
   if (lastClock == 1 && clock==0){
-    lastClock = clock;
+    
     out = digitalRead(DATA_PIN)+digitalRead(DATA_PIN)+digitalRead(DATA_PIN); // Tripple sampling to remove glitches
-    if((micros() - time) > 600){
+    bitcount++;
+    if((micros() - time) > 700){
       
-      sendcaliper();
+      
       curr_caliper_value = 0; 
       bitcount =0;
-      return;
+      
       
     }
     else if((micros() - time) > 400){
@@ -71,24 +77,24 @@ void other_loop(){
     
       
       
-    if(bitcount<20){
-      if (out > 1){
+    if(bitcount>1&&bitcount<=20){
+      if (out <= 1){
         curr_caliper_value|=(1<<bitcount);
       }
-    }else if(bitcount == 20){
-      if (out > 1){
+    }else if(bitcount == 21){
+      if (out <= 1){
         curr_caliper_value=-1*curr_caliper_value;
       }
       
       sendcaliper();
       
-      sendpressure();
-      sendduty();
+      //sendpressure();
+      //sendduty();
       mooder();
     }
       
     
-    bitcount++;
+    
     
     time = micros();
 

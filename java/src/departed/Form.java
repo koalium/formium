@@ -451,13 +451,18 @@ public class Form extends javax.swing.JFrame {
 		return timerTask;
 	}
 
+	final int lastrecivedframelen=88;
+	byte[] lastrecivedframe= new byte[lastrecivedframelen];
+	int lrb_wr_ptr=0,lrb_rd_ptr=0;
+	int framestatuse;
+	
+	ByteBuffer lastrecivedbuffer;
 	//
 	private  synchronized void timi(){
 		timer = new Timer("main");
 		timer.scheduleAtFixedRate(tt(), 10, 10);
 	}
 	//
-	byte[] rb=new byte[10];
 	public synchronized void serialReciver(){
 		
 		if(sp==null){
@@ -466,35 +471,53 @@ public class Form extends javax.swing.JFrame {
 		if(sp.bytesAvailable()>0){
 			byte[] sb = new byte[sp.bytesAvailable()];
 			sp.readBytes(sb, sb.length);
-			
 			for(byte b : sb){
-				if(b!=_eol ){
-					if(bc<rb.length){
-						rb[bc++]=b;
-					}else{
-						bc=0;
+				if(b==_psb){
+					lastrecivedframe=new byte[lastrecivedframelen];
+					lrb_wr_ptr=0;
+					lastrecivedbuffer = ByteBuffer.allocateDirect(lastrecivedframelen);
+					framestatuse=lastrecivedframelen;
+				}else if(b==_peb){
+					if(framestatuse<0){
+						continue;
 					}
-					continue;
-				}
-				
-				if(bc>0){
-					byte[] ib = new byte[bc];
-					for(int i =0;i<bc;i++){
-						ib[i]=rb[i];
+					if(lrb_wr_ptr<1){
+						continue;
 					}
-					bc= 0;
+					byte[] ib = new byte[lrb_wr_ptr];
+					System.arraycopy(lastrecivedframe, 0, ib, 0, lrb_wr_ptr);
 					vcmd.addLast(ib);
-					rb=new byte[10];
+					framestatuse=-1;
+				}else{
+					if(framestatuse<0){
+						continue;
+					}
+					if(lrb_wr_ptr>=lastrecivedframelen){
+						lrb_wr_ptr=0;
+					}
+					framestatuse++;
+					lastrecivedframe[lrb_wr_ptr++]=b;
 				}
 				
+			}	
 				
-			}
+				
+			
 			
 		}
 		
 	}
 
-	
+	private byte[] koalication(int data,byte datahandle){
+		byte[] koalicated=new byte[6];
+		int temp = data;
+		koalicated[0]=(byte) (temp &0x7f);
+		temp=temp>>7;
+		koalicated[1]=(byte) (temp &0x7f);
+		temp=temp>>7;
+		koalicated[2]=(byte) (temp &0x7f);
+		return koalicated;
+	}
 	
 	
 	//
@@ -511,20 +534,15 @@ public class Form extends javax.swing.JFrame {
 		if(log!=null){
 				log.addlogger("Rec : "+Arrays.toString(cmd), true);
 			}
-		switch(cmd[0]){
+		byte inscaser=cmd[0];
+		int ans=0;
+		for(int i=1;i<cmd.length;i++){
+			ans = ans<<7;
+			ans|=(0x7f&cmd[i]);
+		}
+		switch(inscaser){
 			case _duty:
-				if(cmd.length>1){
-				if(cmd[1]<0){
-					rduty = cmd[1]+256;
-				}else{
-					rduty = cmd[1];
-				}
-				
-				}else{
-					rduty=0;
-				}
-			
-			
+				rduty=ans;
 				break;
 			//
 			
@@ -544,52 +562,20 @@ public class Form extends javax.swing.JFrame {
 				break;
 			//
 			case _mode:
-				if(cmd.length>1){
-					int ib;
-				if(cmd[1]<0){
-					ib = cmd[1]+256;
-				}else{
-					ib = cmd[1];
-				}
-				setmode(ib);
-			}else{
-					rmode=0;
-				}
-			mon.setmmode(rmode);
+				
 				break;
 			//
 			case _height:
-				rheight=0;
-				int sign = 1;
-				for(byte b:cmd){
-					if(b=='-'){
-						sign = -1;
-					}
-					if(b>='0'&&b<='9'){
-						rheight=rheight*10;
-						rheight+=(b-'0');
-					}
-				}
-			 
-			rheight = sign*rheight;
-			
+				rheight=ans;
+				
 			mon.setmheight(rheight);
 				break;
 			//
 			case _pressure:
-				rpressure=0;
-				 sign = 1;
-				for(byte b:cmd){
-					if(b=='-'){
-						sign = -1;
-					}
-					if(b>='0'&&b<='9'){
-						rpressure=rpressure*10;
-						rpressure+=(b-'0');
-					}
-				}
-			rpressure=rpressure*sign;
-			mon.setmpressure(rpressure);
+				rpressure=ans;
+				 
+			
+				mon.setmpressure(rpressure);
 				break;
 			//
 			case _JobDone:
@@ -726,8 +712,8 @@ public class Form extends javax.swing.JFrame {
 		//
 		if(checkbychanger(Control.CHANGE_BUTTON_PRESS_DRAIN)){
 			
-			//serialSend(null,_dump);
-			//setmode(CHANGE_MODE_DRAIN);
+			serialSend(null,_dump);
+			setmode(CHANGE_MODE_DRAIN);
 			
 		}
 		//
@@ -738,47 +724,28 @@ public class Form extends javax.swing.JFrame {
 		//
 		if(checkbychanger(Control.CHANGE_VALUE_HPRESSURE)){
 			fpressure = ctrl.getfpressure();
-			byte[] b = new byte[3];
-			b[0]=_fpressure;
-			b[1]=(byte)((fpressure>>8)&0xff);
-			b[2]=(byte)((fpressure)&0xff);
-			serialSend(b,(byte)0);
+			serialSend(koalication(fpressure,_fpressure),(byte)0);
 		}
 		//
 		if(checkbychanger(Control.CHANGE_VALUE_HHEIGHT)){
 			
 			fheight = ctrl.getfheight();
-			byte[] b = new byte[3];
-			b[0]=_fheight;
-			b[1]=(byte)((fheight>>8)&0xff);
-			b[2]=(byte)((fheight)&0xff);
-			serialSend(b,(byte)0);
+			serialSend(koalication(fheight,_fheight),(byte)0);
 		}
 		//
 		if(checkbychanger(Control.CHANGE_DEPEND_HEIGHT)){
 			rdepend = ctrl.getcdepend();
-			mon.setmdepend(rdepend);
-			byte[] b = new byte[2];
-			b[0]=_depend;
-			b[1]=(byte)((rdepend)&0xff);
-			serialSend(b,(byte)0);
+			serialSend(koalication(rdepend,_depend),(byte)0);
 		}
 		//
 		if(checkbychanger(Control.CHANGE_DEPEND_PRESSURE)){
 			rdepend = ctrl.getcdepend();
-			mon.setmdepend(rdepend);
-			byte[] b = new byte[2];
-			b[0]=_depend;
-			b[1]=(byte)((rdepend)&0xff);
-			serialSend(b,(byte)0);
+			serialSend(koalication(rdepend,_depend),(byte)0);
 		}
 		//
 		if(checkbychanger(Control.CHANGE_SCROLL_PWM)){
-			byte[] b = new byte[2];
 			sduty=ctrl.getcduty();
-			b[0]=_duty;
-			b[1]=(byte)((sduty)&0xff);
-			serialSend(b,(byte)0);
+			serialSend(koalication(sduty,_duty),(byte)0);
 			
 		}
 		//
@@ -797,32 +764,16 @@ public class Form extends javax.swing.JFrame {
 			stime = System.currentTimeMillis();
 			//serialSend(_fht_+fheight+" "+_fpr_+fpressure+" "+_dpd_+rdepend+" "+_run_);
 			setmode(CHANGE_BUTTON_PRESS_RUN);
-			byte[] b = new byte[2];
-			sduty=ctrl.getcduty();
-			b[0]=_duty;
-			b[1]=(byte)((sduty)&0xff);
-			serialSend(b,(byte)0);
-			//
 			rdepend = ctrl.getcdepend();
-			mon.setmdepend(rdepend);
-			b = new byte[2];
-			b[0]=_depend;
-			b[1]=(byte)((rdepend)&0xff);
-			serialSend(b,(byte)0);
+			serialSend(koalication(rdepend,_depend),(byte)0);
+			fpressure = ctrl.getfpressure();
+			serialSend(koalication(fpressure,_fpressure),(byte)0);
 			//
 			fheight = ctrl.getfheight();
-			b = new byte[3];
-			b[0]=_fheight;
-			b[1]=(byte)((fheight)&0xff);
-			b[2]=(byte)((fheight>>8)&0xff);
-			serialSend(b,(byte)0);
-			//
-			fpressure = ctrl.getfpressure();
-			b = new byte[3];
-			b[0]=_fpressure;
-			b[1]=(byte)((fpressure)&0xff);
-			b[2]=(byte)((fpressure>>8)&0xff);
-			serialSend(b,(byte)0);
+			serialSend(koalication(fheight,_fheight),(byte)0);
+			sduty=ctrl.getcduty();
+			serialSend(koalication(sduty,_duty),(byte)0);
+			
 			//
 			serialSend(null,_run);
 			
@@ -904,7 +855,7 @@ public class Form extends javax.swing.JFrame {
 			}
 		}
 	}
-	private final String datastringmaker(){
+	private String datastringmaker(){
 		String s ="";
 		s+="F\n";
 		s+="P"+fpressure+"\n";
@@ -996,60 +947,16 @@ public class Form extends javax.swing.JFrame {
 	}
 	
 	
-	private static byte[] mybufferbyte ={0,};
-	private int mybytebuffer_wr_ptr=0;
-	private ByteBuffer mybytebuffer = ByteBuffer.allocate(100);
-	private  void pushtomybytebuffer(byte b){
-		byte[] nb = new byte[mybufferbyte.length+1];
-		int i =0;
-		if(mybufferbyte.length==0){
-			mybufferbyte = new byte[1];
-			mybufferbyte[0] = b;
-			return;
-		}
-		for(byte bb:mybufferbyte){
-			nb[i++]=bb;
-		}
-		nb[nb.length-1]=b;
-		mybufferbyte= nb;
-
-	}
 	
-	private  synchronized byte[] getrreadmybytebuffer(){
-		byte[] b = new byte[mybufferbyte.length];
-		for(int i=0;i<mybufferbyte.length;i++){
-			b[i]=mybufferbyte[i];
-		}
-		mybufferbyte=new byte[0];
-		return b;
-	}
+	
+	
 	private synchronized byte[]   makesender(byte[] sb){
-		int carry = 0,ib;
-		
-		for(byte b:sb){
-			
-			
-			ib = b;
-			if(ib<0){
-				ib+=256;
-			}
-			ib+=(1+carry);
-			//
-			if(ib>255){
-				ib-=255;
-				carry = 1;
-			}else{
-				carry = 0;
-			}
-			ib = ib&0xff;
-			pushtomybytebuffer((byte) (ib));
-		}
-		if(carry==1){
-			pushtomybytebuffer((byte)carry);
-		}
-		pushtomybytebuffer(_eol);
-		
-		return getrreadmybytebuffer();
+		byte[] bts= new byte[sb.length+2];
+		bts[0]=_psb;
+		bts[bts.length-1]= _peb;
+		System.arraycopy(sb, 0, bts, 1, sb.length);
+		return bts;
+	
 	}
 	//
 	//
@@ -1063,7 +970,9 @@ public class Form extends javax.swing.JFrame {
 		serialSend(null,_pause);
 		setmode(CHANGE_MODE_IDLE);
 	}
-	int bc = 0;
+	
+	final byte _psb = (byte)(0x80);
+	final byte _peb = (byte)0x90;
 	Control ctrl = null;
 	Monitor mon = null;
 	Log log = null;
@@ -1095,8 +1004,6 @@ public class Form extends javax.swing.JFrame {
 	final byte _mode = 'm';
 	final byte _Mode = 'M';
 	final byte _JobDone = 'J';
-	final byte _eol = 0;
-	final byte _mol = (byte) 255;
 	private  int rpressure=0;
 	private  int rheight=0;
 	private  int rduty=0;

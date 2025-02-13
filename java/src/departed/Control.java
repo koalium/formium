@@ -325,13 +325,16 @@ public class Control extends javax.swing.JFrame {
                 jPanel4.setBackground(new java.awt.Color(153, 153, 255));
                 jPanel4.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.LOWERED), javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED)), javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createEtchedBorder(), javax.swing.BorderFactory.createEtchedBorder(javax.swing.border.EtchedBorder.RAISED))));
 
-                jButtonRun.setBackground(new java.awt.Color(102, 255, 51));
+                jButtonRun.setBackground(java.awt.Color.green);
                 jButtonRun.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
                 jButtonRun.setForeground(java.awt.Color.black);
                 jButtonRun.setText("Run");
                 jButtonRun.addMouseListener(new java.awt.event.MouseAdapter() {
                         public void mousePressed(java.awt.event.MouseEvent evt) {
                                 jButtonRunMousePressed(evt);
+                        }
+                        public void mouseReleased(java.awt.event.MouseEvent evt) {
+                                jButtonRunMouseReleased(evt);
                         }
                 });
                 jButtonRun.addActionListener(new java.awt.event.ActionListener() {
@@ -598,7 +601,7 @@ public class Control extends javax.swing.JFrame {
         private void jButtonPumpMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButtonPumpMousePressed
                 // TODO add your handling code here:
 		remchage(CHANGE_BUTTON_PRESS_PUMP);
-		jButtonPump.setBackground(Color.gray);
+		jButtonPump.setBackground(Color.blue);
 		jPanelState.setBackground(Color.cyan);
 		jLabelState.setText("Pump");
         }//GEN-LAST:event_jButtonPumpMousePressed
@@ -615,7 +618,7 @@ public class Control extends javax.swing.JFrame {
 
         private void jButtonRunMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButtonRunMousePressed
                 // TODO add your handling code here:
-		jButtonRun.setBackground(Color.yellow);
+		jButtonRun.setBackground(Color.blue);
 		remchage(CHANGE_BUTTON_PRESS_RUN);
         }//GEN-LAST:event_jButtonRunMousePressed
 
@@ -693,6 +696,11 @@ public class Control extends javax.swing.JFrame {
                 // TODO add your handling code here:
 		remchage(CHANGE_VALUE_HHEIGHT);
         }//GEN-LAST:event_jFormattedTextFieldHeghitFocusLost
+
+        private void jButtonRunMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButtonRunMouseReleased
+                // TODO add your handling code here:
+		jButtonRun.setBackground(Color.green);
+        }//GEN-LAST:event_jButtonRunMouseReleased
 
 	/**
 	 * @param args the command line arguments
