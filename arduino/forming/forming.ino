@@ -19,7 +19,7 @@ void rehandshake(){
       }
     }
     Serial.write(_handshake);
-    Serial.write('\n');
+    
   }
 }
 void setup() {

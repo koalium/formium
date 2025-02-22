@@ -10,40 +10,16 @@ int readPressureValue(){
   return 100;
 }
 
-void sendduty(){
-  Serial.write(_duty);
-  Serial.write(duty);
-  Serial.write(_eol);
+
+
+void sendkoalicateddata(long dat,String datahandle){
+ 
+
+  Serial.println(String(datahandle)+":"+String(dat));
+  delay(21);
 }
 
-void sendkoalicateddata(long data,char datahandle){
-  uint8_t koalicated[4];
-  long temp = data;
-  koalicated[0]=temp &0x7f;
-  temp=temp>>7;
-  koalicated[1]=temp &0x7f;
-  temp=temp>>7;
-  koalicated[2]=temp &0x7f;
-  Serial.write(_psb);
-  Serial.write(datahandle);
-  Serial.write(koalicated[2]);
-  Serial.write(koalicated[1]);
-  Serial.write(koalicated[0]);
-  Serial.write(_peb);
-}
 
-void sendkoalicateddata_16(uint16_t data,char datahandle){
-  uint8_t koalicated[4];
-  long temp = data;
-  koalicated[0]=temp &0x7f;
-  temp=temp>>7;
-  koalicated[1]=temp &0x7f;
-  Serial.write(_psb);
-  Serial.write(datahandle);
-  Serial.write(koalicated[1]);
-  Serial.write(koalicated[0]);
-  Serial.write(_peb);
-}
 
 void setup_caliper() 
 {
@@ -103,8 +79,8 @@ clock = 1;
       
       
       sendkoalicateddata(curr_caliper_value,_height);
-      sendkoalicateddata_16(readPressureValue(),_pressure);
-      sendkoalicateddata_16(duty,_duty);
+      sendkoalicateddata(readPressureValue(),_pressure);
+      sendkoalicateddata(duty,_duty);
       
       mooder();
     }

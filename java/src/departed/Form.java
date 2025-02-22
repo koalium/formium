@@ -622,7 +622,7 @@ public class Form extends javax.swing.JFrame {
 		if(!handshaked){
 		if(sp!=null && sp.isOpen()){
 			
-			serialSend(null,_handshake);
+			//serialSend(null,_handshake);
 			//serialSend(null,_name);
 		}
 		}
@@ -707,6 +707,7 @@ public class Form extends javax.swing.JFrame {
 			
 			serialSend(null,_pump);
 			setmode(CHANGE_MODE_IDLE);
+			serialSend(koalication(0,_pump),(byte)0);
 			
 		}
 		//
@@ -714,12 +715,14 @@ public class Form extends javax.swing.JFrame {
 			
 			serialSend(null,_dump);
 			setmode(CHANGE_MODE_DRAIN);
+			serialSend(koalication(0,_dump),(byte)0);
 			
 		}
 		//
 		if(checkbychanger(Control.CHANGE_BUTTON_PRESS_STOP)){
 			serialSend(null,_pause);
 			setmode(CHANGE_MODE_IDLE);
+			serialSend(koalication(0,_pause),(byte)0);
 		}
 		//
 		if(checkbychanger(Control.CHANGE_VALUE_HPRESSURE)){
@@ -751,12 +754,15 @@ public class Form extends javax.swing.JFrame {
 		//
 		if(checkbychanger(Control.CHANGE_BUTTON_PRESS_PAUSE)){
 			serialSend(null,_pause);
+			
 			setmode(CHANGE_MODE_IDLE);
+			serialSend(koalication(0,_pause),(byte)0);
 		}
 		//
 		if(checkbychanger(Control.CHANGE_BUTTON_PRESS__PUMPING)){
 			serialSend(null,_pump);
 			setmode(CHANGE_MODE_IDLE);
+			serialSend(koalication(0,_pump),(byte)0);
 		}
 		//
 		if(checkbychanger(Control.CHANGE_BUTTON_PRESS_RUN)){
@@ -776,17 +782,19 @@ public class Form extends javax.swing.JFrame {
 			
 			//
 			serialSend(null,_run);
+			serialSend(koalication(0,_run),(byte)0);
 			
 		}
 		
 		if(checkbychanger(Control.CHANGE_BUTTON_PRESS_STOP)){
 			serialSend(null,_pause);
-			setmode(CHANGE_MODE_IDLE);
+			//setmode(CHANGE_MODE_IDLE);
+			serialSend(koalication(0,_pause),(byte)0);
 		}
 		
 		if(ctrl.getdrainstate()){
-			serialSend(null,_dump);
-			setmode(CHANGE_MODE_DRAIN);
+			//serialSend(null,_dump);
+			//setmode(CHANGE_MODE_DRAIN);
 		}
 		
 		

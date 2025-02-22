@@ -33,15 +33,16 @@ void mooder(){
 
 
 //
+uint8_t leninst=0;
 //
 
 void commandpharser(){
   long ans = 0;
-    ans|=(input[3]&0x7f);
+  for(int i =1;i<leninst;i++){
     ans=ans<<7;
-    ans|=(input[2]&0x7f);
-    ans=ans<<7;
-    ans|=(input[1]&0x7f);
+    ans|=input[i];
+  }
+  
  
   
   switch(input[0]){
@@ -74,7 +75,7 @@ void commandpharser(){
     dependence= input[1]; 
       break;
     //
-    case _duty:
+/*    case _duty:
       if(input[2]==1){
         duty = 0xff;
       }else{
@@ -91,7 +92,7 @@ void commandpharser(){
     nam_();
       break;
     //
-    
+    */
   }
 
  
@@ -101,6 +102,7 @@ char inchar =0;
 uint8_t inbyte=0;
 uint8_t input_wr_counter = 0;
 int framestatus=-1;
+
 //
 void readCmd(){
   while(Serial.available()){
@@ -122,6 +124,7 @@ void readCmd(){
         continue;
       }
       framestatus=-1;
+      leninst=input_wr_counter;
       commandpharser();  
     }else{
       if(framestatus<0){
