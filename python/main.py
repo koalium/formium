@@ -51,13 +51,13 @@ def makewindow():
     [sg.Text('Sensor Values', font=('Helvetica', 20), justification='center', expand_x=True)],
     
     [sg.Column(
-        [[sg.Slider(range=(0, 255), orientation='v', size=(20, 20), key='FPRESSURE_SLIDER', enable_events=True)],], element_justification='center'),
+        [[sg.Slider(range=(0, 255), orientation='v', size=(10, 10), key='FPRESSURE_SLIDER', enable_events=True)],], element_justification='center'),
         sg.Column([[
      sg.Frame('Pressure', [[sg.Text('', key='PRESSURE_VAL', font=('Helvetica', 24, 'bold'), justification='center', pad=(0, 70))]],
               size=(200, 200), background_color='green', key='PRESSURE_FRAME', element_justification='center', border_width=5, relief='raised'),
      sg.Frame('Caliper', [[sg.Text('', key='CALIPER_VAL', font=('Helvetica', 24, 'bold'), justification='center', pad=(0, 70))]],
               size=(200, 200), background_color='green', key='CALIPER_FRAME', element_justification='center', border_width=5, relief='raised')],],element_justification='center'),
-     sg.Column([[sg.Slider(range=(0, 255), orientation='v', size=(20, 20), key='FHEIGHT_SLIDER', enable_events=True)],], element_justification='center')],
+     sg.Column([[sg.Slider(range=(0, 255), orientation='v', size=(10, 10), key='FHEIGHT_SLIDER', enable_events=True)],], element_justification='center')],
 
 
     [sg.Text('_' * 80, text_color='grey', pad=(5, 5), expand_x=True)],
