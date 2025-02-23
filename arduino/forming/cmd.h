@@ -1,11 +1,25 @@
+#include "WString.h"
 //
 
 #ifndef CMD_H
 #define CMD_H
 #include "insert.h"
 #include "command.h"
-
-
+char inchar =0;
+uint8_t inbyte=0;
+uint8_t input_wr_counter = 0;
+int framestatus=-1;
+long pharsedataofcmd(char cmd[],char len){
+  long ret = 0;
+  for(int i=1;i<len;i++){
+    if(cmd[i]>=48 && cmd[i]<59){
+      char c = cmd[i]-48;
+      ret=ret*10;
+      ret=ret+c;
+    }
+  }
+  return ret;
+}
 
 void mooder(){
  
@@ -37,11 +51,7 @@ uint8_t leninst=0;
 //
 
 void commandpharser(){
-  long ans = 0;
-  for(int i =1;i<leninst;i++){
-    ans=ans<<7;
-    ans|=input[i];
-  }
+  
   
  
   
@@ -64,26 +74,22 @@ void commandpharser(){
       break;
     //
     case _fheight:
-    forming_final_height_value = ans;
+    forming_final_height_value = pharsedataofcmd(input,input_wr_counter);
       break;
     //
     case _fpressure:
-    forming_final_pressure_value = ans;
+    forming_final_pressure_value = pharsedataofcmd(input,input_wr_counter);
       break;
     //
     case _depend:
     dependence= input[1]; 
       break;
     //
-/*    case _duty:
-      if(input[2]==1){
-        duty = 0xff;
-      }else{
-        duty = ans;
-      }
+   case _fduty:
+      duty = pharsedataofcmd(input,input_wr_counter);
     
       break;
-    //
+    /*
     case _handshake:
     hio_();
       break;
@@ -98,45 +104,19 @@ void commandpharser(){
  
 }
 
-char inchar =0;
-uint8_t inbyte=0;
-uint8_t input_wr_counter = 0;
-int framestatus=-1;
+
 
 //
 void readCmd(){
   while(Serial.available()){
-    inbyte = Serial.read();
-    
-    
-    if (inbyte==_psb){
-      input_wr_counter = 0;
-      for(char i =0;i<8;i++){
-        input[i]=0;
-      }
+    char inbyte = Serial.read();
+    if(inbyte=='\n'){
       
-      framestatus=100;
-    }else if(inbyte==_peb){
-      if(framestatus<0){
-        continue;
-      }
-      if(input_wr_counter<1){
-        continue;
-      }
-      framestatus=-1;
-      leninst=input_wr_counter;
-      commandpharser();  
-    }else{
-      if(framestatus<0){
-        continue;
-      }
-      input[input_wr_counter++]=inbyte;
-      framestatus++;
+      commandpharser();
+      input_wr_counter=0;
+      return;
     }
-      
-      
-      
-
+    input[input_wr_counter++]=inbyte;
     
   }
 }

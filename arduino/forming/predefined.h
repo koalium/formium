@@ -76,10 +76,12 @@ const char server_ = 'W';
 
 const char _pump = 'P';
 const char _dump = 'D';
+const char _drain = 'D';
 const char _run = 'R';
 const char _pause = 'S';
 const char _fheight = 'h';
 const char _fpressure = 'p';
+const char _fduty = 'c';
 const char _depend = 'd';
 const String _duty = "duty";
 const char _handshake = 'H';
@@ -89,12 +91,7 @@ const String _pressure = "pressure";
 const String _mode = "mood";
 const char _Mode = 'M';
 const char _JobDone = 'J';
-const char _eol = 0x35;
-const char _mol = (byte) 255;
-const char _psb = 0x66;
-const char _peb = 0x52;
-const char _instruction = 0x40;
-const char _data = 0x60;
+
 
 const uint32_t dtime_done =3000;
 uint32_t ptime =0;

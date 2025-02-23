@@ -3,11 +3,7 @@
 #include "insert.h"
 
 
-void sendclient(char cmd[]){
-  Serial.write(cmd);
-  
-  Serial.write(_eol);
-}
+
 
 
 

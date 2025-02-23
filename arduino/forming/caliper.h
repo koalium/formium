@@ -16,7 +16,7 @@ void sendkoalicateddata(long dat,String datahandle){
  
 
   Serial.println(String(datahandle)+":"+String(dat));
-  delay(21);
+ // delay(21);
 }
 
 
@@ -79,8 +79,11 @@ clock = 1;
       
       
       sendkoalicateddata(curr_caliper_value,_height);
+      readCmd();
       sendkoalicateddata(readPressureValue(),_pressure);
+      readCmd();
       sendkoalicateddata(duty,_duty);
+      readCmd();
       
       mooder();
     }
