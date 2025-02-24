@@ -66,12 +66,12 @@ def update_meter(graph_elem, val=10.11,maxval=100.00,show=[10.11,100.00,'mm','he
 # Function to determine color based on value
 def get_color(value, max_value):
     ratio = value / max_value
-    if ratio==1:
+    if ratio>=1:
         return'blue'
-    elif ratio>=1:
-        return 'purple'
-    elif ratio >= 0.8:
+    elif ratio>=0.95:
         return 'red'
+    elif ratio >= 0.8:
+        return 'purple'
     elif ratio >= 0.6:
         return 'orange'
     elif ratio >= 0.4:
@@ -106,17 +106,17 @@ def makewindow():
          sg.Radio("", "DEPENDENCY", key="pressure_dependency",disabled=True)]
          ]
     , border_width=2, element_justification='stretch'),
-     sg.Frame('Motor Power', [[sg.Text('', key='-MOTOR_VAL-', font=('Helvetica', 24, 'bold'), justification='center', pad=(0, 70))]],
-              size=(200, 200), background_color='green', key='MOTOR_FRAME', element_justification='center', border_width=5, relief='raised'),],],element_justification='center'),
-     sg.Column([[sg.Slider(range=(0, 100), orientation='v', size=(12, 15), key='DUTY_SLIDER', enable_events=True)],], element_justification='left')]
+     sg.Frame('Motor Power', [[sg.Text('', key='-MOTOR_VAL-',size=(10,10),expand_y=True, font=('Tahoma', 48, 'bold'), justification='center', pad=(0, 40),background_color=bgcwin)]],
+              size=(200, 200),background_color=bgcwin, key='MOTOR_FRAME', element_justification='center', border_width=5, relief='raised'),],],element_justification='center'),
+     sg.Column([[sg.Slider(range=(0, 100), orientation='v', size=(12, 15), key='DUTY_SLIDER', enable_events=True)],], element_justification='center')]
     
     layout_control=[
-    [sg.Button('Pump', key='PUMP', button_color=('yellow', 'blue'), size=(10, 2)),sg.Button('Pause', key='PAUSE', button_color=('yellow', 'orange'), size=(10, 2)),
-     sg.Button('Drain', key='DRAIN', button_color=('yellow', 'magenta'), size=(10, 2),metadata=BtnInfo())],
-    [sg.Button('Run', key='RUN', button_color=('yellow', 'green'), size=(10, 2)),
+    [
+     sg.Button('Drain', key='DRAIN', button_color=('yellow', 'magenta'), size=(10, 2),metadata=BtnInfo(),disabled=True),sg.Button('Pause', key='PAUSE', button_color=('yellow', 'orange'), size=(10, 2),disabled=True),sg.Button('+', key='PUMP', button_color=('yellow', 'blue'), size=(10, 2),disabled=True),],
+    [
               
-     sg.Button('Stop', key='STOP', button_color=('yellow', 'red'), size=(10, 2))],
-    [sg.Button('Pump ON', key='PUMP', button_color=('yellow', 'blue'), size=(10, 2))]]
+     sg.Button('Stop', key='STOP', button_color=('yellow', 'red'), size=(10, 2),disabled=True),sg.Button('Run', key='RUN', button_color=('yellow', 'green'), size=(10, 2),disabled=True),],
+    [sg.Button('Pump ON', key='PUMPON', button_color=('yellow', 'blue'), size=(10, 2),disabled=True)]]
 
     layout = [layout_progress_graph,
          [sg.Menu(menu_def, tearoff=False)],
@@ -159,7 +159,7 @@ IDLE_MODE=6
 DONE_MODE=7
 DUTYCYCLE_DEFAULT=55
 def loopgui():
-    
+    btndis=True
     arduino = None   # type: ignore
     down = graphic_off = True    
     recpressure=1.02
@@ -230,7 +230,10 @@ def loopgui():
         elif event == 'DUTY_SLIDER':
             arduino.write(f'c{fduty}\n'.encode())
             pass
-        
+        elif event == 'PUMPON':
+            arduino.write(f'c{fduty}\n'.encode())
+            arduino.write(f'P1500\n'.encode())
+            mode=PUMP_MODE
         if loopcounter==1:
             ports = list_serial_ports()
             window['-PORT-'].update(values=ports)
@@ -275,16 +278,26 @@ def loopgui():
                 phfc = nsdata.find("duty:") 
                 if phfc >-1:
                     nsdata=nsdata[phfc:len(nsdata)]
-                    recduty= float(nsdata[phfc+len("duty:"):len(nsdata)])/2.55
+                    recduty= int(nsdata[phfc+len("duty:"):len(nsdata)])/2.55
                     window['-MOTOR_VAL-'].update(f'{recduty:.0f}%')
+                    window['-MOTOR_VAL-'].update(text_color=get_color(recduty,100))
+                    
                     nsdata=nsdata[phfc+len("duty:"):len(nsdata)]
+                    if btndis:
+                        window['PUMPON'].update(disabled=False)
+                        window['PUMP'].update(disabled=False)
+                        window['DRAIN'].update(disabled=False)
+                        window['PAUSE'].update(disabled=False)
+                        window['RUN'].update(disabled=False)
+                        window['STOP'].update(disabled=False)
+                        btndis=False
                 sanitized_data = sanitized_data[nlc+2:len(sanitized_data)]
                 nlc = min(sanitized_data.find('\n'),sanitized_data.find('\r'))
             
         
          # Close the window and serial port
         if mode == RUN_MODE:
-            
+            #window['DUTY_SLIDER'].update(recduty)
             if fheight>recheight:
                 arduino.write(b'R\n')    
             else:
