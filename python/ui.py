@@ -1,7 +1,38 @@
 import serial
 import FreeSimpleGUI as sg
 import serial.tools.list_ports
+import time
 from string import *
+import threading
+
+
+sg.user_settings_filename(path='.')  # The settings file will be in the same folder as this program
+
+def wait_for_handshake(ser, keyword="height"):
+    start_time = time.time()
+    while True:
+        line = ser.readline().decode().strip()
+        if keyword in line:
+            return True
+        if time.time() - start_time > 2:
+            print(f"No handshake received within 2 seconds on port {ser.port}")
+            return False
+        print(f"Received text: {line}")
+
+def find_and_connect():
+    ports = serial.tools.list_ports.comports()
+    for port in ports:
+        try:
+            ser = serial.Serial(port.device, baudrate=115200, timeout=2)
+            if wait_for_handshake(ser, keyword="height"):
+                sg.popup_quick_message(f"Connection Successful: {ser.port}", text_color='white', background_color='red', font='_ 22',)
+                return ser
+            ser.close()
+        except Exception as e:
+            print(f"Error connecting to port {port.device}: {e}")
+    return None
+
+
 
 # Class holding the button graphic info. At this time only the state is kept
 class BtnInfo:
@@ -22,6 +53,7 @@ def connect_to_port(port):
         return ser
     except serial.SerialException as e:
         sg.popup_error("Error", f"Failed to connect to {port}: {e}")
+
 # Settings for you to modify are the size of the element, the circle width & color and the font for the % complete
 bgcwin='black'
 GRAPH_SIZE = (300 , 300)          # this one setting drives the other settings
@@ -37,6 +69,7 @@ TEXT_COLOR_V = 'cyan'
 TEXT_LOCATION_V= (GRAPH_SIZE[0]//2, GRAPH_SIZE[1]//2.2)
 TEXT_COLOR_U = 'light green'
 TEXT_LOCATION_U= (GRAPH_SIZE[0]//2, GRAPH_SIZE[1]//5.2)
+
 def update_meter(graph_elem, val=10.11,maxval=100.00,show=[10.11,100.00,'mm','height']):
     """
     Update a circular progress meter
@@ -80,52 +113,62 @@ def get_color(value, max_value):
         return 'lightgreen'
     else:
         return 'green'
+    
 def makewindow():
     # Define the GUI layout with colored squares for displaying values and control buttons
     ports = list_serial_ports()
-    menu_def = [['File', ['Exit']],
-            ['Settings', ['Select Serial Port']]]
-    
-    layout_t=[[sg.Frame("Monitoring", [
-        [sg.Graph(canvas_size=(200, 200), graph_bottom_left=(0, 0), graph_top_right=(200, 200), key="-GRAPHH-", background_color='white'), 
-         sg.Graph(canvas_size=(200, 200), graph_bottom_left=(0, 0), graph_top_right=(200, 200), key="-GRAPHP-", background_color='white')]
-    ], border_width=2)],]
+    menu_def = [['File', ['New','Exit']],
+            ['Settings', ['Select Serial Port','log on','log off']]]
+    sg.theme('black')
 
     layout_progress_graph = [  sg.Graph(GRAPH_SIZE, (0,0), GRAPH_SIZE, key='-GRAPHH-',background_color=bgcwin),sg.Graph(GRAPH_SIZE, (0,0), GRAPH_SIZE, key='-GRAPHP-',background_color=bgcwin)]
 
     col_1 =[
         sg.Column([[
-     sg.Frame("Control Inputs", [[sg.Combo(ports, key='-PORT-', size=(20, 1))],
-    [sg.Button('Connect')],
-        [sg.Text("Final Height:"), sg.Stretch(), sg.InputText("", justification='center',key="final_height", size=(8, 1), enable_events=True),
+     sg.Frame("Control Inputs", [
+    [sg.Button('Reconnect')],
+        [sg.Text("Final Height:"), sg.Stretch(), sg.InputText("101.31", justification='center',key="final_height", size=(8, 1), enable_events=True),
          sg.Radio("", "DEPENDENCY", key="height_dependency",default=True, enable_events=True)],[
-        sg.Text("Final Pressure:"), sg.Stretch(),sg.InputText("", justification='center',disabled=True,key="final_pressure", size=(8, 1), enable_events=True),
+        sg.Text("Final Pressure:"), sg.Stretch(),sg.InputText("105.2", justification='center',disabled=True,key="final_pressure", size=(8, 1), enable_events=True),
          sg.Radio("", "DEPENDENCY", key="pressure_dependency",disabled=True)]
          ,[
-        sg.Text("Final forming:"), sg.Stretch(),sg.InputText("", justification='center',disabled=True,key="final_form", size=(8, 1), enable_events=True),
-         sg.Radio("", "DEPENDENCY", key="pressure_dependency",disabled=True)]
+        sg.Text("Size:"), sg.Stretch(),sg.InputText("4", justification='center',disabled=False,key="-SIZE-", size=(8, 1), enable_events=True),
+         sg.Radio("", "DEPENDENCY", key="radiosize",disabled=False)]
          ]
     , border_width=2, element_justification='stretch'),
-     sg.Frame('Motor Power', [[sg.Text('', key='-MOTOR_VAL-',size=(10,10),expand_y=True, font=('Tahoma', 48, 'bold'), justification='center', pad=(0, 40),background_color=bgcwin)]],
+     sg.Frame('Motor Power', [[sg.Text('11', key='-MOTOR_VAL-',size=(10,10),expand_y=True, font=('Tahoma', 48, 'bold'), justification='center', pad=(0, 40),background_color=bgcwin)]],
               size=(200, 200),background_color=bgcwin, key='MOTOR_FRAME', element_justification='center', border_width=5, relief='raised'),],],element_justification='center'),
-     sg.Column([[sg.Slider(range=(0, 100), orientation='v', size=(12, 15), key='DUTY_SLIDER', enable_events=True)],], element_justification='center')]
+     sg.Column([[sg.Slider(range=(0, 100), orientation='v', font=('Helvetica 20'), size=(12, 15), key='DUTY_SLIDER',change_submits=True,  enable_events=True)],], element_justification='center')]
     
     layout_control=[
     [
-     sg.Button('Drain', key='DRAIN', button_color=('yellow', 'magenta'), size=(10, 2),metadata=BtnInfo(),disabled=True),sg.Button('Pause', key='PAUSE', button_color=('yellow', 'orange'), size=(10, 2),disabled=True),sg.Button('+', key='PUMP', button_color=('yellow', 'blue'), size=(10, 2),disabled=True),],
+     sg.Button('Drain', key='DRAIN', button_color=('yellow', 'magenta'), size=(10, 2),metadata=BtnInfo(),disabled=True),
+     sg.Button('Pause', key='PAUSE', button_color=('yellow', 'olive'), size=(10, 2),disabled=True,enable_events=True,change_submits=True),
+     sg.Button('+', key='PUMP', button_color=('yellow', 'blue'), size=(10, 2),disabled=True),],
     [
               
      sg.Button('Stop', key='STOP', button_color=('yellow', 'red'), size=(10, 2),disabled=True),sg.Button('Run', key='RUN', button_color=('yellow', 'green'), size=(10, 2),disabled=True),],
-    [sg.Button('Pump ON', key='PUMPON', button_color=('yellow', 'blue'), size=(10, 2),disabled=True)]]
+    [sg.Button('Pump ON', key='PUMPON', button_color=('yellow', 'darkblue'), size=(10, 2),disabled=True)]]
 
-    layout = [layout_progress_graph,
-         [sg.Menu(menu_def, tearoff=False)],
-         col_1,layout_control
+    log_layout = [
+        
+        [sg.Multiline(size=(50, 20), key='-OUTPUT-',visible=False)]
+        
     ]
-
+    
+    
+    layout = [[sg.Menu(menu_def, tearoff=False)],
+              layout_progress_graph,[sg.HorizontalSeparator()],
+              col_1,[sg.HorizontalSeparator()],
+              layout_control,[sg.HorizontalSeparator()],
+              log_layout
+        ]
+    
     # Create the window
-    window = sg.Window('Arduino Sensor Values and Control', layout, finalize=True, element_justification='center',location=(100, 100),background_color=bgcwin)
+    window = sg.Window('Arduino Sensor Values and Control', layout, finalize=True, element_justification='center',location=(100, 100),background_color=bgcwin,resizable=True,sbar_frame_color='gray')
     return window
+
+
 
 def reinterperetrecived(data='pressure:100',check='pressure'):
     cc=check.__add__(':')
@@ -149,7 +192,9 @@ def reciveddata(data=" "):
             cif = cnf
         else:
             return
-    
+
+
+
 RUN_MODE=1
 STOP_MODE=2
 PAUSE_MODE=3
@@ -158,9 +203,16 @@ DRAIN_MODE=5
 IDLE_MODE=6
 DONE_MODE=7
 DUTYCYCLE_DEFAULT=55
+global arduino
+arduino = None#find_and_connect()   # type: ignore
 def loopgui():
+    
     btndis=True
-    arduino = None   # type: ignore
+    # Create a UserSettings object. The JSON file will be saved in the same folder as this .py file
+    window_contents = sg.UserSettings(path='.', filename='mysettings.json')
+    keys_to_save = ('DUTY_SLIDER','final_height')
+    #arduino = find_and_connect()   # type: ignore
+    
     down = graphic_off = True    
     recpressure=1.02
     recheight=0.01
@@ -181,74 +233,121 @@ def loopgui():
     loopcounter=0
     height_start=0
     height_remain=fheight-height_start
-    
+    f=[]
     window = makewindow()
+    # Run the connection process in a separate thread
+    
+
+    #threading.Thread(target=run_connection, daemon=True).start()
     p_graph = window["-GRAPHP-"]
     h_graph = window["-GRAPHH-"]
+
+    
+        
+
+    # Show log window for 2 seconds on startup
+    
+
+    # Run the connection process in a separate thread
+    started=0
     # Event loop to process user interactions
     while True:
+        #event, values = window.read(timeout=5)
         event, values = window.read(timeout=5)
         loopcounter+=1
         
-        if event in (sg.WIN_CLOSED, 'Quit'):
+        if event is sg.WIN_CLOSED:
             break
-
-        if event == 'PUMP':
+        elif event =='Exit':
+            sg.popup_quick_message('Saving settings & Exiting', text_color='white', background_color='red', font='_ 20')
+            for key in keys_to_save:
+                window_contents[key] = values[key]
+            break
             
-            arduino.write(f'c{fduty}\n'.encode())
-            arduino.write(f'P100\n'.encode())
-            mode=PUMP_MODE
+        if event == 'log on':
+            f.append(1)
+            window['-OUTPUT-'].update(visible=True)
+        elif event == 'no log':
+            f.clear()
+            window['-OUTPUT-'].update(visible=False)
+            
+        elif event == 'PUMP':
+            if arduino is not None:
+                arduino.write(f'c{fduty}\n'.encode())
+                arduino.write(f'P100\n'.encode())
+                mode=PUMP_MODE
         elif event == 'STOP':
-            arduino.write(f'S\n'.encode())
-            mode=STOP_MODE
+            if arduino is not None:
+                arduino.write(f'S\n'.encode())
+                mode=STOP_MODE
         elif event == 'DRAIN':
-            arduino.write(f'D\n'.encode())
+            if arduino is not None:
+                arduino.write(f'D\n'.encode())
             mode=DRAIN_MODE
         elif event == 'PAUSE':
-            arduino.write(f'S\n'.encode())
-            mode=PAUSE_MODE
+            if arduino is not None:
+                arduino.write(f'S\n'.encode())
+                mode=PAUSE_MODE
         elif event == 'RUN':
-            arduino.write(f'h{fheight}\n'.encode())
-            
-            arduino.write(f'c{fduty}\n'.encode())
-            if mode_prev is not RUN_MODE:
-                height_start=recheight
-            mode=RUN_MODE
-        elif event in (sg.WIN_CLOSED, 'Exit'):
-            break
-        elif event == 'Select Serial Port':
-            ports = list_serial_ports()
-            window['-PORT-'].update(values=ports)
-        elif event == 'Connect':
-            selected_port = values['-PORT-']
-            if selected_port:
-                if arduino is not None:
-                    arduino.close()
-                arduino = connect_to_port(selected_port)
-            else:
-                sg.popup_error("Error", "Please select a port")
+            if arduino is not None:
+                arduino.write(f'h{fheight}\n'.encode())
+                arduino.write(f'c{fduty}\n'.encode())
+                if mode_prev is not RUN_MODE:
+                    height_start=recheight
+                mode=RUN_MODE
+        elif event == "-SIZE-":
+            if values['radiosize']:
+                if len(values["-SIZE-"])>0:
+                    if float(values["-SIZE-"]):
+                        fheight = float(values["-SIZE-"])*25.4*0.21
+                        window["final_height"].update(f'{fheight:.2f}')
+        elif event == 'Reconnect':
+            if arduino is not None:
+                arduino.close()
+            arduino = find_and_connect()  
         elif event == 'DUTY_SLIDER':
-            arduino.write(f'c{fduty}\n'.encode())
+            if arduino is not None:
+                fduty=int(int(values['DUTY_SLIDER'])*2.55)
+                arduino.write(f'c{fduty}\n'.encode())
             pass
         elif event == 'PUMPON':
-            arduino.write(f'c{fduty}\n'.encode())
-            arduino.write(f'P1500\n'.encode())
-            mode=PUMP_MODE
-        if loopcounter==1:
+            if arduino is not None:
+                arduino.write(f'c{fduty}\n'.encode())
+                arduino.write(f'P1500\n'.encode())
+                mode=PUMP_MODE
+        elif event == 'SaveSettings':
+            filename = sg.popup_get_file('Save Settings', save_as=True, no_window=True)
+            window.SaveToDisk(filename)
+            # save(values)
+        elif event == 'LoadSettings':
+            filename = sg.popup_get_file('Load Settings', no_window=True)
+            window.LoadFromDisk(filename)
+            # load(form)
+        
+        if started==0:
+            started=1
             ports = list_serial_ports()
-            window['-PORT-'].update(values=ports)
             pshow=[recpressure,max_pressure,'Bar','pressure']
             hshow=[recheight,max_caliper,'mm','height']
             update_meter(h_graph, recheight,max_caliper,show=hshow )  
             update_meter(p_graph, recpressure,max_pressure,show=pshow )
-            window['final_height'].update(fheight/100)
-            window['final_pressure'].update(fpressure/10)
+            window['final_height'].update(f'{fheight/100:.2f}')
+            window['final_pressure'].update(f'{fpressure/10:.1f}')
+            window['DUTY_SLIDER'].update(fduty/2.55)
+            for key in keys_to_save:
+                saved_value = window_contents[key]
+                window[key].update(saved_value)
+            arduino = find_and_connect()
         if arduino is None:
             continue    
-        
+        #if type(values['final_pressure']) is type("10.3"):
         fpressure=float(values['final_pressure'])
+        #if type(values['final_height']) is type("10.3"):
         fheight = float(values['final_height'])*100
+        #if type(values['DUTY_SLIDER']) is type("10.3"):
         fduty=int(int(values['DUTY_SLIDER'])*2.55)
+        
+        
         # Read data from Arduino
         
         
@@ -260,19 +359,19 @@ def loopgui():
             nlc = min(sanitized_data.find('\n'),sanitized_data.find('\r'))
             while nlc>-1:
                 nsdata = sanitized_data[0:nlc]
-
+                window['-OUTPUT-'].update(f'{nsdata}\n',append=True)    
                 phfc = nsdata.find("pressure:") 
                 if phfc >-1:
                     nsdata=nsdata[phfc:len(nsdata)]
                     recpressure= float(nsdata[phfc+len("pressure:"):len(nsdata)])
                     pshow=[recpressure,max_pressure,'Bar','pressure']
-                    update_meter(p_graph, recpressure,max_pressure,show=pshow )
+                    update_meter(p_graph, recpressure,fpressure,show=pshow )
                     nsdata=nsdata[phfc+len("pressure:"):len(nsdata)]
                 phfc = nsdata.find("height:") 
                 if phfc >-1:
                     nsdata=nsdata[phfc:len(nsdata)]
                     recheight= float(nsdata[phfc+len("height:"):len(nsdata)])
-                    hshow=[recheight,max_caliper,'mm','height']
+                    hshow=[recheight,fheight,'mm','height']
                     update_meter(h_graph, recheight,max_caliper,show=hshow )  
                     nsdata=nsdata[phfc+len("height:"):len(nsdata)]
                 phfc = nsdata.find("duty:") 
@@ -349,5 +448,6 @@ def read_sanitized_data(arduino):
 
 def main():
     loopgui()
+    
 if __name__ == '__main__':
     main()

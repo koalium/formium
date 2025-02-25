@@ -1,150 +1,82 @@
-import serial
-import FreeSimpleGUI as sg
-import serial.tools.list_ports
-from string import *
 
 
 
+import ui
+
+def main():
+    ui.main()
+
+if __name__ == '__main__':
+    main()
 
 
-def sanitize_input(data):
-    return ''.join([str(c) for c in data if ord(c) < 128])
+import PySimpleGUI as sg
 
-def list_serial_ports():
-    ports = serial.tools.list_ports.comports()
-    return [port.device for port in ports]
+menu_def = [['File', ['New', 'Exit']],
+            ['Settings', ['Select Serial Port', 'log on', 'log off']]]
+sg.theme('black')
 
-def connect_to_port(port):
-    try:
-        ser = serial.Serial(port, 115200, timeout=1)
-        sg.popup("Success", f"Connected to {port}")
-        return ser
-    except serial.SerialException as e:
-        sg.popup_error("Error", f"Failed to connect to {port}: {e}")
+GRAPH_SIZE = (400, 400)
+bgcwin = 'black'
 
-# Set up serial communication with the Arduino
-#arduino = #serial.Serial('COM7', 115200)  # Replace 'COM7' with your Arduino's serial port
+layout_progress_graph = [
+    sg.Graph(GRAPH_SIZE, (0, 0), GRAPH_SIZE, key='-GRAPHH-', background_color=bgcwin),
+    sg.Graph(GRAPH_SIZE, (0, 0), GRAPH_SIZE, key='-GRAPHP-', background_color=bgcwin)
+]
 
-# Function to determine color based on value
-def get_color(value, max_value):
-    ratio = value / max_value
-    if ratio >= 0.8:
-        return 'red'
-    elif ratio >= 0.6:
-        return 'orange'
-    elif ratio >= 0.4:
-        return 'yellow'
-    elif ratio >= 0.2:
-        return 'lightgreen'
-    else:
-        return 'green'
-def makewindow():
-    # Define the GUI layout with colored squares for displaying values and control buttons
-    ports = list_serial_ports()
-    menu_def = [['File', ['Exit']],
-            ['Settings', ['Select Serial Port']]]
-    layout = [
-         [sg.Menu(menu_def, tearoff=False)],
-         [sg.Text('Select a serial port:')],
-    [sg.Combo(ports, key='-PORT-', size=(20, 1))],
-    [sg.Button('Connect')],
-    [sg.Text('Sensor Values', font=('Helvetica', 20), justification='center', expand_x=True)],
-    
-    [sg.Column(
-        [[sg.Slider(range=(0, 255), orientation='v', size=(10, 10), key='FPRESSURE_SLIDER', enable_events=True)],], element_justification='center'),
-        sg.Column([[
-     sg.Frame('Pressure', [[sg.Text('', key='PRESSURE_VAL', font=('Helvetica', 24, 'bold'), justification='center', pad=(0, 70))]],
-              size=(200, 200), background_color='green', key='PRESSURE_FRAME', element_justification='center', border_width=5, relief='raised'),
-     sg.Frame('Caliper', [[sg.Text('', key='CALIPER_VAL', font=('Helvetica', 24, 'bold'), justification='center', pad=(0, 70))]],
-              size=(200, 200), background_color='green', key='CALIPER_FRAME', element_justification='center', border_width=5, relief='raised')],],element_justification='center'),
-     sg.Column([[sg.Slider(range=(0, 255), orientation='v', size=(10, 10), key='FHEIGHT_SLIDER', enable_events=True)],], element_justification='center')],
+col_1 = sg.Column([
+    sg.Frame("Control Inputs", [
+        [sg.Button('Reconnect')],
+        [sg.Text("Final Height:"), sg.Stretch(),
+         sg.InputText("101.31", justification='center', key="final_height", size=(8, 1), enable_events=True),
+         sg.Radio("", "DEPENDENCY", key="height_dependency", default=True, enable_events=True)],
+        [sg.Text("Final Pressure:"), sg.Stretch(),
+         sg.InputText("105.2", justification='center', disabled=True, key="final_pressure", size=(8, 1), enable_events=True),
+         sg.Radio("", "DEPENDENCY", key="pressure_dependency", disabled=True)],
+        [sg.Text("Size:"), sg.Stretch(),
+         sg.InputText("4", justification='center', key="-SIZE-", size=(8, 1), enable_events=True),
+         sg.Radio("", "DEPENDENCY", key="radiosize", disabled=False)]
+    ], border_width=2, element_justification='stretch'),
+    sg.Frame('Motor Power', [
+        [sg.Text('11', key='-MOTOR_VAL-', size=(10, 10), expand_y=True, font=('Tahoma', 48, 'bold'), justification='center', pad=(0, 40), background_color=bgcwin)]
+    ], size=(200, 200), background_color=bgcwin, key='MOTOR_FRAME', element_justification='center', border_width=5, relief='raised'),
+], element_justification='center')
 
+col_2 = sg.Column([
+    [sg.Slider(range=(0, 100), orientation='v', font=('Helvetica 20'), size=(12, 15), key='DUTY_SLIDER', change_submits=True, enable_events=True)],
+], element_justification='center')
 
-    [sg.Text('_' * 80, text_color='grey', pad=(5, 5), expand_x=True)],
-    [sg.Frame('Duty Cycle', [[sg.ProgressBar(100, orientation='h', size=(20, 20), key='DUTY_CYCLE_BAR')],
-                             [sg.Slider(range=(0, 255), orientation='h', size=(20, 20), key='DUTY_CYCLE_SLIDER', enable_events=True)]], 
-              element_justification='center', expand_x=True)],
-    [sg.Text('Control', font=('Helvetica', 20), justification='center', expand_x=True)],
-    [sg.Button('Pump ON', key='PUMP', button_color=('white', 'blue'), size=(10, 2)),
-     sg.Button('Pump OFF', key='STOP_PUMP', button_color=('white', 'blue'), size=(10, 2))],
-    [sg.Button('Dump ON', key='DUMP', button_color=('white', 'orange'), size=(10, 2)),
-     sg.Button('Dump OFF', key='STOP_DUMP', button_color=('white', 'orange'), size=(10, 2))],
-    [sg.Button('Quit', button_color=('white', 'red'), size=(10, 2))]
-    ]
+layout_control = [
+    [sg.Button('Drain', key='DRAIN', button_color=('yellow', 'magenta'), size=(10, 2), disabled=True),
+     sg.Button('Pause', key='PAUSE', button_color=('brown', 'orange'), size=(10, 2), disabled=True, enable_events=True, change_submits=True),
+     sg.Button('+', key='PUMP', button_color=('yellow', 'blue'), size=(10, 2), disabled=True)],
+    [sg.Button('Stop', key='STOP', button_color=('yellow', 'red'), size=(10, 2), disabled=True),
+     sg.Button('Run', key='RUN', button_color=('yellow', 'green'), size=(10, 2), disabled=True)],
+    [sg.Button('Pump ON', key='PUMPON', button_color=('olive', 'blue'), size=(10, 2), disabled=True)]
+]
 
-    # Create the window
-    window = sg.Window('Arduino Sensor Values and Control', layout, finalize=True, element_justification='center')
-    return window
+log_layout = [
+    [sg.Multiline(size=(50, 20), key='-OUTPUT-', visible=False)]
+]
 
-def loopgui():
-    # Maximum values for scaling (change based on your sensor range)
-    arduino = serial.Serial('COM7', 115200) 
-    max_pressure = 1023
-    max_caliper = 1023
-    max_duty_cycle = 255
-    window = makewindow()
-    # Event loop to process user interactions
-    while True:
-        event, values = window.read(timeout=100)
+layout = [[sg.Menu(menu_def, tearoff=False)],
+          layout_progress_graph,
+          [sg.HorizontalSeparator()],
+          col_1,
+          [sg.HorizontalSeparator()],
+          layout_control,
+          [sg.HorizontalSeparator()],
+          log_layout]
 
-        if event in (sg.WIN_CLOSED, 'Quit'):
-            break
-        
-        
-        if arduino.in_waiting > 0:
-            sanitized_data = read_sanitized_data(arduino=arduino).strip()
-            
-            
-            if sanitized_data.find("f:"):
-                window['PRESSURE_VAL'].update(sanitized_data[sanitized_data.find("f:")+2:len(sanitized_data)])
-            
-            
+scrollable_layout = [[sg.Column(layout, scrollable=True, vertical_scroll_only=True, size=(600, 800), key='-SCROLLABLE-', background_color=bgcwin)]]
 
-        if event == 'PUMP':
-            arduino.write(b'PUMP\n')  # Send 'PUMP' command to Arduino
-        elif event == 'STOP_PUMP':
-            arduino.write(b'STOP_PUMP\n')  # Send 'STOP_PUMP' command to Arduino
-        elif event == 'DUMP':
-            arduino.write(b'DUMP\n')  # Send 'DUMP' command to Arduino
-        elif event == 'STOP_DUMP':
-            arduino.write(b'STOP_DUMP\n')  # Send 'STOP_DUMP' command to Arduino
-        elif event == 'DUTY_CYCLE_SLIDER':
-            duty_cycle_value = values['DUTY_CYCLE_SLIDER']
-            arduino.write(f'DUTY:{int(duty_cycle_value)}\n'.encode())
-        elif event == 'FPRESSURE_SLIDER':
-            fpressure_value = values['FPRESSURE_SLIDER']
-            arduino.write(f'FPRESSURE:{int(fpressure_value)}\n'.encode())
-        elif event == 'FHEIGHT_SLIDER':
-            fheight_value = values['FHEIGHT_SLIDER']
-            arduino.write(f'FHEIGHT:{int(fheight_value)}\n'.encode())
-        elif event in (sg.WIN_CLOSED, 'Exit'):
-            break
-        elif event == 'Select Serial Port':
-            ports = list_serial_ports()
-            window['-PORT-'].update(values=ports)
-        elif event == 'Connect':
-            selected_port = values['-PORT-']
-            if selected_port:
-                arduino.close()
-                arduino = connect_to_port(selected_port)
-            else:
-                sg.popup_error("Error", "Please select a port")
-        # Read data from Arduino
-        
-    # Close the window and serial port
-    window.close()
-    arduino.close()
+# Create the window
+window = sg.Window('Arduino Sensor Values and Control', scrollable_layout, finalize=True, element_justification='center',
+                   location=(100, 100), background_color=bgcwin, size=(600, 800), resizable=True, sbar_frame_color='gray')
 
+while True:
+    event, values = window.read()
+    if event == sg.WIN_CLOSED or event == 'Exit':
+        break
 
-def is_ascii_byte(byte):
-    return 0 <= byte < 128
-# Function to read and sanitize data from Arduino
-def read_sanitized_data(arduino):
-    data = bytearray()
-    while arduino.in_waiting > 0:
-        byte = arduino.read()
-        if is_ascii_byte(byte[0]):
-            data.append(byte[0])
-    return data.decode('utf-8')# Function to read and sanitize data from Arduino
-
-loopgui()
+window.close()
