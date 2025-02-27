@@ -5,7 +5,14 @@
 
 
 
-
+void handshake(){
+  for(int i=0;i<100;i++){
+    if(Serial){
+      Serial.println(F("handshake"));
+      delay(5);
+    }
+  }
+}
 
 
 
@@ -18,7 +25,7 @@ void setup() {
   setup_caliper();
   init_gpio();
  
-  
+  handshake();
   delay(10);
 
 

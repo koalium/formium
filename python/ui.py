@@ -8,28 +8,31 @@ import threading
 
 sg.user_settings_filename(path='.')  # The settings file will be in the same folder as this program
 
-def wait_for_handshake(ser, keyword="height"):
+def wait_for_handshake(ser, keywords=("height")):
     start_time = time.time()
     while True:
         line = ser.readline().decode().strip()
-        if keyword in line:
-            return True
-        if time.time() - start_time > 2:
-            print(f"No handshake received within 2 seconds on port {ser.port}")
-            return False
-        print(f"Received text: {line}")
+        for keyword in keywords:
+            if keyword in line:
+                return True
+            if time.time() - start_time > 2:
+                print(f"No handshake received within 2 seconds on port {ser.port}")
+                sg.popup_quick_message(f"No handshake received within 2 seconds on port {ser.port}", text_color='darkgreen', background_color='orange', font='_ 18',)
+                return False
+            print(f"Received text: {line}")
 
 def find_and_connect():
     ports = serial.tools.list_ports.comports()
     for port in ports:
         try:
             ser = serial.Serial(port.device, baudrate=115200, timeout=2)
-            if wait_for_handshake(ser, keyword="height"):
+            if wait_for_handshake(ser, keywords = ("height","handshake")):
                 sg.popup_quick_message(f"Connection Successful: {ser.port}", text_color='white', background_color='red', font='_ 22',)
                 return ser
             ser.close()
         except Exception as e:
             print(f"Error connecting to port {port.device}: {e}")
+    sg.popup("Connection Fail","check your device connection:\nRESTART your board...??\nUNPLUG and plug your boar again...?!!\nTURN ON Caliper...??!\n...\nthen click on button : Reconnect !!!",text_color='magenta')
     return None
 
 
@@ -206,7 +209,7 @@ DUTYCYCLE_DEFAULT=55
 global arduino
 arduino = None#find_and_connect()   # type: ignore
 def loopgui():
-    
+    start_time = time.time()
     btndis=True
     # Create a UserSettings object. The JSON file will be saved in the same folder as this .py file
     window_contents = sg.UserSettings(path='.', filename='mysettings.json')
@@ -350,7 +353,9 @@ def loopgui():
         
         # Read data from Arduino
         
-        
+        if btndis:
+            if time.time() - start_time > 2:
+                sg.popup("reading fail","turn on caliper ....")
         
 
         
